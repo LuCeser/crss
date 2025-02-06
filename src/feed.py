@@ -13,6 +13,37 @@ class FeedProcessor:
         self.database = database
         self.http_client = http_client
 
+    def parse_feed(self, feed_url: str) -> Optional[feedparser.FeedParserDict]:
+        """
+        解析RSS源，处理可能的编码问题
+        """
+        try:
+            # 首先尝试直接解析
+            feed = feedparser.parse(feed_url)
+            
+            # 如果发现编码错误，尝试使用不同的编码重新解析
+            if feed.bozo and isinstance(feed.bozo_exception, feedparser.CharacterEncodingOverride):
+                # 获取原始内容
+                import requests
+                response = requests.get(feed_url, timeout=10)
+                
+                # 尝试使用 UTF-8 编码
+                response.encoding = 'utf-8'
+                feed = feedparser.parse(response.text)
+                
+                # 如果还是失败，尝试其他常见编码
+                if feed.bozo:
+                    for encoding in ['gb2312', 'gbk', 'iso-8859-1']:
+                        response.encoding = encoding
+                        feed = feedparser.parse(response.text)
+                        if not feed.bozo:
+                            break
+            
+            return feed
+        except Exception as e:
+            logger.error(f"RSS解析失败: {str(e)}")
+            return None
+
     def process_feed(self, feed_name: str, feed_url: str, scan_history_id: int) -> Dict[str, int]:
         """
         处理单个RSS源
@@ -23,9 +54,13 @@ class FeedProcessor:
         result = {"success": 0, "error": 0}
         
         try:
-            feed = feedparser.parse(feed_url)
+            feed = self.parse_feed(feed_url)
             
-            if feed.bozo:  # RSS解析错误
+            if feed is None:
+                logger.error(f"无法解析RSS源 {feed_name}")
+                return result
+            
+            if feed.bozo and not isinstance(feed.bozo_exception, feedparser.CharacterEncodingOverride):
                 logger.error(f"RSS解析错误 {feed_name}: {feed.bozo_exception}")
                 return result
             

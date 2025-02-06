@@ -1,0 +1,17 @@
+.DS_Store
+.venv
+.idea
+.vscode
+.pytest_cache
+.mypy_cache
+
+config/config.yaml
+logs/*
+*.db
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.py
