@@ -1,0 +1,10 @@
+interval: 300
+database: "feeds.db"
+log_file: "logs/rss.log"
+target_api: "http://api.example.com/webhook"
+
+feeds:
+  - name: "示例源1"
+    url: "https://example.com/feed.xml"
+  - name: "示例源2"
+    url: "https://example.com/rss.xml" 
