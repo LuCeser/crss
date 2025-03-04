@@ -1,12 +1,16 @@
+import logging
 import os
 import time
+
 import schedule
-import logging
+
 from src.config import Config
+from src.content_processor import ContentProcessor
 from src.database import Database
-from src.http_client import HTTPClient
 from src.feed import FeedProcessor
+from src.http_client import HTTPClient
 from src.utils import setup_logging
+
 
 class RSSMonitor:
     def __init__(self, config_path: str):
@@ -19,7 +23,18 @@ class RSSMonitor:
         # 初始化组件
         self.database = Database(self.config.database)
         self.http_client = HTTPClient(self.config.target_api)
-        self.feed_processor = FeedProcessor(self.database, self.http_client)
+        
+        # 初始化内容处理器
+        self.content_processor = ContentProcessor(
+            llm_config=self.config.llm_config
+        )
+        
+        # 初始化Feed处理器
+        self.feed_processor = FeedProcessor(
+            database=self.database,
+            http_client=self.http_client,
+            content_processor=self.content_processor
+        )
 
     def scan_feeds(self):
         """执行一次完整的扫描"""
@@ -39,10 +54,11 @@ class RSSMonitor:
         for feed in feeds:
             try:
                 self.logger.info(f"处理RSS源: {feed['name']}")
+                
                 result = self.feed_processor.process_feed(
                     feed_name=feed['name'],
                     feed_url=feed['url'],
-                    scan_history_id=scan_id
+                    scan_history_id=scan_id,
                 )
                 
                 total_success += result['success']
@@ -66,7 +82,7 @@ class RSSMonitor:
 
     def run(self):
         """启动监控程序"""
-        self.logger.info("RSS监控程序启动")
+        self.logger.info("crss启动")
         
         # 立即执行一次扫描
         self.scan_feeds()

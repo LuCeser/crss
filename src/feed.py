@@ -1,21 +1,24 @@
-import feedparser
-from typing import Dict, List, Optional, Generator
 import logging
-from datetime import datetime
-from .utils import get_link_hash
+from typing import Dict, Optional
+
+import feedparser
+
+from .content_processor import ContentProcessor
 from .database import Database
 from .http_client import HTTPClient
+from .utils import get_link_hash
 
 logger = logging.getLogger(__name__)
 
 class FeedProcessor:
-    def __init__(self, database: Database, http_client: HTTPClient):
+    def __init__(self, database: Database, http_client: HTTPClient, content_processor: ContentProcessor):
         self.database = database
         self.http_client = http_client
+        self.content_processor = content_processor
 
     def parse_feed(self, feed_url: str) -> Optional[feedparser.FeedParserDict]:
         """
-        解析RSS源，处理可能的编码问题
+        解析RSS源, 处理可能的编码问题
         """
         try:
             # 首先尝试直接解析
@@ -72,6 +75,7 @@ class FeedProcessor:
                     
                     # 检查是否已处理
                     if self.database.is_processed(link_hash):
+                        logger.info(f"已存在处理记录 {link}")
                         continue
                     
                     # 发送到目标API
@@ -105,3 +109,16 @@ class FeedProcessor:
             logger.error(f"处理RSS源错误 {feed_name}: {str(e)}")
             
         return result 
+
+    def process_entry(self, entry, feed_name: str, process_content: bool) -> Dict:
+        """处理单个RSS条目"""
+        analysis = {}
+        if process_content:
+            # 转换为Markdown
+            markdown_content = self.content_processor.convert_to_markdown(entry.link)
+            if markdown_content:
+                # 分析内容
+                analysis = self.content_processor.analyze_content(markdown_content)
+                analysis['markdown_content'] = markdown_content
+
+        return analysis 

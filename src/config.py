@@ -37,6 +37,17 @@ class Config:
         return self.config_data.get('target_api', '')
 
     @property
-    def feeds(self) -> List[Dict[str, str]]:
+    def llm_config(self) -> Dict:
+        """获取LLM配置"""
+        return self.config_data.get('llm', {
+            'api_key': '',
+            'api_url': 'https://api.openai.com/v1/chat/completions',
+            'model': 'deepseek-chat',
+            'temperature': 0.7,
+            'max_tokens': 500
+        })
+
+    @property
+    def feeds(self) -> List[Dict[str, Any]]:
         """获取RSS源列表"""
         return self.config_data.get('feeds', []) 
