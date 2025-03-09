@@ -1,4 +1,15 @@
-interval: 300
+timezone: "Asia/Shanghai"  # 时区设置
+proxy:  # 代理服务器设置（可选）
+  http: "http://127.0.0.1:7890"   # HTTP代理
+  https: "http://127.0.0.1:7890"  # HTTPS代理
+  # 不需要代理的域名列表
+  no_proxy: 
+    - "localhost"
+    - "127.0.0.1"
+schedule_times:  # 每天运行的时间点列表，格式为 HH:MM
+  - "09:00"
+  - "12:00"
+  - "18:00"
 database: "feeds.db"
 log_file: "logs/rss.log"
 target_api: "http://api.example.com/webhook"

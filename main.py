@@ -1,6 +1,8 @@
 import logging
 import os
 import time
+from datetime import datetime
+import pytz
 
 import schedule
 
@@ -17,12 +19,22 @@ class RSSMonitor:
         # 加载配置
         self.config = Config(config_path)
         
-        # 设置日志
+        # 设置时区
+        self.timezone = pytz.timezone(getattr(self.config, 'timezone', 'Asia/Shanghai'))
+        os.environ['TZ'] = self.timezone.zone
+        time.tzset()  # 更新系统时区
         self.logger = setup_logging(self.config.log_file)
+        self.logger.info(f"使用时区: {self.timezone.zone}")
+        
+        # 获取代理配置
+        proxy_config = getattr(self.config, 'proxy', None)
+        if proxy_config:
+            self.logger.info(f"使用代理配置: HTTP={proxy_config.get('http', 'None')}, "
+                           f"HTTPS={proxy_config.get('https', 'None')}")
         
         # 初始化组件
         self.database = Database(self.config.database)
-        self.http_client = HTTPClient(self.config.target_api)
+        self.http_client = HTTPClient(self.config.target_api, proxy_config)
         
         # 初始化内容处理器
         self.content_processor = ContentProcessor(
@@ -38,7 +50,8 @@ class RSSMonitor:
 
     def scan_feeds(self):
         """执行一次完整的扫描"""
-        self.logger.info("开始扫描RSS源")
+        current_time = datetime.now(self.timezone).strftime('%Y-%m-%d %H:%M:%S %Z')
+        self.logger.info(f"开始扫描RSS源 - 当前时间: {current_time}")
         
         # 重新加载配置
         self.config.load_config()
@@ -87,8 +100,10 @@ class RSSMonitor:
         # 立即执行一次扫描
         self.scan_feeds()
         
-        # 设置定时任务
-        schedule.every(self.config.interval).seconds.do(self.scan_feeds)
+        # 设置定时任务 - 为每个配置的时间点创建调度
+        for time_str in self.config.schedule_times:
+            schedule.every().day.at(time_str).do(self.scan_feeds)
+            self.logger.info(f"已设置每日 {time_str} ({self.timezone.zone}) 运行扫描任务")
         
         # 主循环
         while True:
