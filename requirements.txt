@@ -2,5 +2,5 @@ pyyaml==6.0.1
 feedparser==6.0.10
 requests==2.31.0
 schedule==1.2.0 
-markitdown==0.10.0
+markitdown==0.0.2
 pytz==2024.1
