@@ -25,6 +25,8 @@ class RSSMonitor:
         time.tzset()  # 更新系统时区
         self.logger = setup_logging(self.config.log_file)
         self.logger.info(f"使用时区: {self.timezone.zone}")
+
+        self.schedule_times = getattr(self.config, 'schedule_times', [])
         
         # 获取代理配置
         proxy_config = getattr(self.config, 'proxy', None)
@@ -101,7 +103,7 @@ class RSSMonitor:
         self.scan_feeds()
         
         # 设置定时任务 - 为每个配置的时间点创建调度
-        for time_str in self.config.schedule_times:
+        for time_str in self.schedule_times:
             schedule.every().day.at(time_str).do(self.scan_feeds)
             self.logger.info(f"已设置每日 {time_str} ({self.timezone.zone}) 运行扫描任务")
         
