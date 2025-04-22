@@ -1,10 +1,11 @@
+import logging
+import re
+from enum import Enum
+from typing import Dict, Optional
+from urllib.parse import urlparse
+
 import markitdown
 import requests
-from typing import Dict, Optional
-import logging
-from enum import Enum
-from urllib.parse import urlparse
-import re
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ class ContentType(Enum):
 class ContentProcessor:
     def __init__(self, llm_config: Dict):
         self.llm_config = llm_config
+        self.md = markitdown.MarkItDown()
         self.headers = {
             "Authorization": f"Bearer {llm_config['api_key']}",
             "Content-Type": "application/json"
@@ -48,7 +50,7 @@ class ContentProcessor:
         """根据内容类型进行处理"""
         try:
             if content_type == ContentType.ARTICLE:
-                return self._process_article(url, entry)
+                return self._process_article(url)
             elif content_type == ContentType.YOUTUBE:
                 return self._process_youtube(url, entry)
             elif content_type == ContentType.PODCAST:
@@ -59,15 +61,15 @@ class ContentProcessor:
             logger.error(f"内容处理失败: {str(e)}")
             return {}
 
-    def _process_article(self, url: str, entry: Dict) -> Dict:
+    def _process_article(self, url: str) -> Dict:
         """处理文章内容"""
         try:
-            markdown_content = markitdown.parse_article(url)
+            markdown_content = self.md.convert_url(url)
             if markdown_content:
                 return {
                     'type': 'article',
                     'markdown_content': markdown_content,
-                    'analysis': self._analyze_with_llm(markdown_content)
+                    'analysis': self._analyze_with_llm(markdown_content.text_content)
                 }
         except Exception as e:
             logger.error(f"文章处理失败: {str(e)}")
@@ -127,16 +129,18 @@ class ContentProcessor:
         """使用LLM分析文章内容"""
         try:
             # 获取摘要作为描述
-            summary_prompt = "请用一到两句话总结这篇文章的主要内容："
+            summary_prompt = ("作为一名资深编辑，阅读以下文章内容并输出\n"
+                              "1. 一句话核心摘要\n"
+                              "2. 文章结构（列出 3～5个小标题或段落主题）\n"
+                              "3. 建议：是否值得阅读全文？请简要说明理由（20字以内）")
             summary = self._get_llm_response(summary_prompt + "\n\n" + content)
 
             # 获取标签，要求返回数组格式
-            tags_prompt = "请为这篇文章提供3-5个标签，直接返回标签数组，用逗号分隔："
-            tags = self._get_llm_response(tags_prompt + "\n\n" + content)
+            # tags_prompt = "请为这篇文章提供3-5个标签，直接返回标签数组，用逗号分隔："
+            # tags = self._get_llm_response(tags_prompt + "\n\n" + content)
 
             return {
                 'summary': summary.strip(),
-                'tags': tags.strip()
             }
         except Exception as e:
             logger.error(f"LLM分析失败: {str(e)}")

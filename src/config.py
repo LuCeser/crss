@@ -41,10 +41,10 @@ class Config:
         """获取LLM配置"""
         return self.config_data.get('llm', {
             'api_key': '',
-            'api_url': 'https://api.openai.com/v1/chat/completions',
-            'model': 'deepseek-chat',
-            'temperature': 0.7,
-            'max_tokens': 500
+            'api_url': '',
+            'model': '',
+            'temperature': 0.1,
+            'max_tokens': 8000
         })
 
     @property

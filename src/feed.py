@@ -77,9 +77,11 @@ class FeedProcessor:
                     if self.database.is_processed(link_hash):
                         logger.info(f"已存在处理记录 {link}")
                         continue
-                    
+
+                    content_type = self.content_processor.detect_content_type(link, {})
+                    analyze_ret = self.content_processor.process_content(link, {}, content_type)
                     # 发送到目标API
-                    if self.http_client.send_item(title, link):
+                    if self.http_client.send_item(title, link, analyze_ret['summary']):
                         self.database.add_processed_item(
                             feed_name=feed_name,
                             item_link=link,

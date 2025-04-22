@@ -24,13 +24,14 @@ class HTTPClient:
         self.session = requests.Session()
         self.session.proxies.update(self.proxy_manager.get_session_proxies())
 
-    def send_item(self, title: str, url: str) -> bool:
+    def send_item(self, title: str, url: str, description: str) -> bool:
         """
         发送处理后的内容到目标API
         
         Args:
             title: 文章标题
             url: 原始URL
+            description: 描述
         """
 
         # 构建基础请求体
@@ -39,7 +40,8 @@ class HTTPClient:
             "content": url,
             "title": title,
             "folder": "RSS",
-            "tags": []
+            "tags": [],
+            "description": description
         }
 
         try:
