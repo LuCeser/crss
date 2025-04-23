@@ -26,8 +26,8 @@ class RSSMonitor:
         self.logger = setup_logging(self.config.log_file)
         self.logger.info(f"使用时区: {self.timezone.zone}")
 
-        self.schedule_times = getattr(self.config, 'schedule_times', [])
-        
+        self.schedule_times = self.config.schedule_times
+
         # 获取代理配置
         proxy_config = getattr(self.config, 'proxy', None)
         if proxy_config:

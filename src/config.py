@@ -50,4 +50,9 @@ class Config:
     @property
     def feeds(self) -> List[Dict[str, Any]]:
         """获取RSS源列表"""
-        return self.config_data.get('feeds', []) 
+        return self.config_data.get('feeds', [])
+
+    @property
+    def schedule_times(self) -> List[str]:
+        """获取定时任务时间列表"""
+        return self.config_data.get('schedule_times', [])
