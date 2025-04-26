@@ -71,9 +71,26 @@ class ContentProcessor:
                     'markdown_content': markdown_content,
                     'analysis': self._analyze_with_llm(markdown_content.text_content)
                 }
+            else:
+                # 转换失败但未抛异常时
+                logger.error(f"Markitdown转换失败: 未获取到内容 {url}")
+                return {
+                    'type': 'article',
+                    'markdown_content': None,
+                    'analysis': None,
+                    'original_url': url,
+                    'error': 'Markitdown转换失败'
+                }
         except Exception as e:
             logger.error(f"文章处理失败: {str(e)}")
-        return {'type': 'article'}
+            # 捕获异常后，返回基础信息，跳过LLM分析
+            return {
+                'type': 'article',
+                'markdown_content': None,
+                'analysis': None,
+                'original_url': url,
+                'error': str(e)
+            }
 
     def _process_youtube(self, url: str, entry: Dict) -> Dict:
         """处理YouTube视频"""
