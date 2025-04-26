@@ -80,8 +80,15 @@ class FeedProcessor:
 
                     content_type = self.content_processor.detect_content_type(link, {})
                     analyze_ret = self.content_processor.process_content(link, {}, content_type)
+
+                    # 安全获取 summary
+                    summary = ""
+                    if analyze_ret.get('analysis') and isinstance(analyze_ret['analysis'], dict):
+                        summary = analyze_ret['analysis'].get('summary', '')
+                    # 如果 analysis 是 None 或没有 summary，summary 就是空字符串
+
                     # 发送到目标API
-                    if self.http_client.send_item(title, link, analyze_ret['analysis']['summary']):
+                    if self.http_client.send_item(title, link, summary):
                         self.database.add_processed_item(
                             feed_name=feed_name,
                             item_link=link,
