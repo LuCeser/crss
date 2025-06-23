@@ -12,7 +12,13 @@ from src.database import Database
 from src.feed import FeedProcessor
 from src.http_client import HTTPClient
 from src.utils import setup_logging
+from src.summary_generator import SummaryGenerator
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 class RSSMonitor:
     def __init__(self, config_path: str):
@@ -120,16 +126,50 @@ class RSSMonitor:
                 # 继续运行，不中断程序
                 continue
 
-def main():
-    # 获取配置文件路径
-    config_path = os.getenv('RSS_CONFIG', 'config/config.yaml')
-    
+def process_feeds():
+    """处理所有RSS源"""
     try:
-        monitor = RSSMonitor(config_path)
-        monitor.run()
+        # 初始化组件
+        config = Config()
+        db = Database(config.get('database'))
+        http_client = HTTPClient(config.get('target_api'))
+        content_processor = ContentProcessor(config.get('llm'))
+        feed_processor = FeedProcessor(db, http_client, content_processor)
+        
+        # 处理RSS源
+        feed_processor.process_all_feeds()
+        
+        # 生成每日摘要
+        summary_generator = SummaryGenerator(content_processor, db, config.get('llm'))
+        summary = summary_generator.generate_daily_summary()
+        
+        # 推送摘要
+        if summary and summary != "今天没有新的文章。":
+            http_client.send_message({
+                "type": "summary",
+                "title": f"每日摘要 - {datetime.now().strftime('%Y-%m-%d')}",
+                "content": summary,
+                "folder": "RSS Summary"
+            })
+            
     except Exception as e:
-        logging.error(f"程序启动失败: {str(e)}")
-        raise
+        logger.error(f"处理RSS源时发生错误: {str(e)}")
+
+def main():
+    """主函数"""
+    config = Config()
+    schedule_times = config.get('schedule_times', ['09:00', '12:00', '18:00'])
+    
+    # 设置定时任务
+    for time_str in schedule_times:
+        schedule.every().day.at(time_str).do(process_feeds)
+    
+    logger.info(f"已设置定时任务: {schedule_times}")
+    
+    # 运行定时任务
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
 
 if __name__ == "__main__":
     main() 

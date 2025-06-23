@@ -2,6 +2,11 @@ import sqlite3
 from datetime import datetime
 import json
 from contextlib import contextmanager
+from typing import List, Dict, Optional
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Database:
     def __init__(self, db_path):
@@ -51,6 +56,18 @@ class Database:
                 )
             ''')
             
+            # 创建每日摘要表
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS daily_summaries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date DATE NOT NULL,
+                    summary_content TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(date)
+                )
+            ''')
+            
             conn.commit()
 
     def start_scan(self, total_feeds):
@@ -95,4 +112,51 @@ class Database:
                 conn.commit()
                 return True
             except sqlite3.IntegrityError:
-                return False 
+                return False
+
+    def save_daily_summary(self, date: str, summary_content: str) -> bool:
+        """保存每日摘要"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                INSERT OR REPLACE INTO daily_summaries (date, summary_content, updated_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                ''', (date, summary_content))
+                conn.commit()
+                return True
+        except Exception as e:
+            logger.error(f"保存每日摘要失败: {str(e)}")
+            return False
+
+    def get_daily_summary(self, date: str) -> Optional[str]:
+        """获取指定日期的每日摘要"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                SELECT summary_content FROM daily_summaries
+                WHERE date = ?
+                ''', (date,))
+                result = cursor.fetchone()
+                return result[0] if result else None
+        except Exception as e:
+            logger.error(f"获取每日摘要失败: {str(e)}")
+            return None
+
+    def get_recent_items(self, days: int = 1) -> List[Dict]:
+        """获取最近几天的文章条目"""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                SELECT feed_name, item_title, item_link, processed_time
+                FROM processed_items
+                WHERE date(processed_time) >= date('now', ?)
+                ORDER BY processed_time DESC
+                ''', (f'-{days} days',))
+                return [dict(zip(['feed_name', 'title', 'link', 'time'], row)) 
+                       for row in cursor.fetchall()]
+        except Exception as e:
+            logger.error(f"获取最近文章失败: {str(e)}")
+            return [] 
